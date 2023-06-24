@@ -1,4 +1,4 @@
-# Functions to load, pre-filter and simplify IsoX data
+# Functions to load, pre-filter and simplify IsoX data ------------------------------------
 
 #' @title Read IsoX file
 #' @description Read an IsoX output file (`.isox`) into a tibble data frame
@@ -20,11 +20,11 @@
 #'
 #' * `tic`: total ion current (TIC) of the scan
 #'
-#' * `it.ms`: scan injection time (IT) in milli seconds (ms)
+#' * `it.ms`: scan injection time (IT) in millisecond (ms)
 #'
 #'
 #' @examples
-#' fpath <- system.file("extdata", "testfile_dual_inlet.isox", package="isoorbi")
+#' fpath <- system.file("extdata", "testfile_dual_inlet.isox", package = "isoorbi")
 #' df <- orbi_read_isox(file = fpath)
 #'
 #' @return A tibble containing at minimum the columns `filename`, `scan.no`, `time.min`, `compound`, `isotopocule`, `ions.incremental`, `tic`, `it.ms`
@@ -34,18 +34,29 @@
 orbi_read_isox <- function(file) {
 
   # safety checks
-  if (missing(file)) stop("no file path supplied", call. = TRUE)
-  if (length(file) != 1) stop("can only read exactly 1 file at the time, supplied paths: ", length(file), call. = TRUE)
-  if (!file.exists(file)) stop("this file does not exist: ", file, call. = TRUE)
-  ext <- stringr::str_extract(basename(file), "\\.[^.]+$")
-  if (is.na(ext) || ext != ".isox") stop("unrecognized file extension: ", ext, call. = TRUE)
+  if (missing(file))
+    stop("no file path supplied", call. = TRUE)
 
-  message(paste0("orbi_read_isox() is loading .isox data from file path: \n",
-                 file))
+  if (length(file) != 1)
+    stop("can only read exactly 1 file at the time, supplied paths: ",
+         length(file),
+         call. = TRUE)
+
+  if (!file.exists(file))
+    stop("this file does not exist: ", file, call. = TRUE)
+
+  # ext <- stringr::str_extract(basename(file), "\\.[^.]+$")
+  # use base r to skip stringr dependency (since it's not used elsewhere)
+  ext <- regmatches(basename(file), regexec("\\.[^.]+$", basename(file)))[[1]]
+
+  if (is.na(ext) || ext != ".isox")
+    stop("unrecognized file extension: ", ext, call. = TRUE)
+
+  # info
+  message(paste0("orbi_read_isox() is loading .isox data from file path: \n", basename(file)))
 
 
   tryCatch(
-
     df <- readr::read_tsv(
       file,
       col_types = list(
@@ -58,19 +69,32 @@ orbi_read_isox <- function(file) {
         tic = readr::col_double(),
         it.ms = readr::col_double()
       )
-    ) %>% dplyr::rename(isotopocule = "isotopolog"), # isox format should eventually change as well
+    ) |> dplyr::rename(isotopocule = "isotopolog"),
+
+    # .isox format should eventually change as well to `isotopocule`
     warning = function(w) {
       stop("file format error: ", w$message, call. = TRUE)
     }
   )
 
   # check that all the most important columns are present
-  req_cols <- c("filename", "compound", "scan.no", "time.min", "isotopocule", "ions.incremental", "tic", "it.ms")
+  req_cols <-
+    c(
+      "filename",
+      "compound",
+      "scan.no",
+      "time.min",
+      "isotopocule",
+      "ions.incremental",
+      "tic",
+      "it.ms"
+    )
 
   missing_cols <- setdiff(req_cols, names(df))
 
   if (length(missing_cols) > 0) {
-    paste0("Missing required column(s): ", paste(missing_cols, collapse = ", ")) %>%
+    paste0("Missing required column(s): ",
+           paste(missing_cols, collapse = ", ")) |>
       stop(call. = FALSE)
   }
 
@@ -87,7 +111,7 @@ orbi_read_isox <- function(file) {
 #'
 #' @examples
 #' fpath <- system.file("extdata", "testfile_flow.isox", package="isoorbi")
-#' df <- orbi_read_isox(file = fpath) %>% orbi_simplify_isox()
+#' df <- orbi_read_isox(file = fpath) |> orbi_simplify_isox()
 #'
 #' @export
 
@@ -96,29 +120,41 @@ orbi_simplify_isox <- function(dataset) {
   # safety checks
   if (missing(dataset))
     stop("no dataset supplied", call. = TRUE)
+
   if (is.data.frame(dataset) == FALSE)
     stop("dataset must be a data frame",  call. = TRUE)
+
   if (ncol(dataset) < 8)
     stop("dataset must have at least 8 columns: ", ncol(dataset), call. = TRUE)
+
   if (nrow(dataset) < 1)
     stop("dataset contains no rows: ", nrow(dataset), call. = TRUE)
 
    # check that requires columns are present
-  req_cols <- c("filename", "compound", "scan.no", "time.min", "isotopocule", "ions.incremental", "tic", "it.ms")
+  req_cols <-
+    c(
+      "filename",
+      "compound",
+      "scan.no",
+      "time.min",
+      "isotopocule",
+      "ions.incremental",
+      "tic",
+      "it.ms"
+    )
 
   missing_cols <- setdiff(req_cols, names(dataset))
 
   if (length(missing_cols) > 0) {
-    paste0("Missing required column(s): ", paste(missing_cols, collapse = ", ")) %>%
+    paste0("Missing required column(s): ",
+           paste(missing_cols, collapse = ", ")) |>
       stop(call. = FALSE)
   }
 
   message("orbi_simplify_isox() will keep only the most important columns...")
 
-
-
   tryCatch(
-    dataset %>% dplyr::select(
+    dataset |> dplyr::select(
       "filename",
       "compound",
       "scan.no",
@@ -134,9 +170,9 @@ orbi_simplify_isox <- function(dataset) {
   )
 }
 
-
 #' @title Basic generic filter for IsoX data
 #' @description A basic filter function `orbi_filter_isox()` for file names, isotopocules, compounds and time ranges. Default value for all parameters is FALSE, i.e. no filter is applied.
+#'
 #' @param dataset The IsoX data to be filtered
 #' @param filenames Vector of file names to keep
 #' @param compounds Vector of compounds to keep
@@ -146,8 +182,8 @@ orbi_simplify_isox <- function(dataset) {
 #'
 #'@examples
 #' fpath <- system.file("extdata", "testfile_flow.isox", package = "isoorbi")
-#' df <- orbi_read_isox(file = fpath) %>%
-#' orbi_simplify_isox() %>%
+#' df <- orbi_read_isox(file = fpath) |>
+#' orbi_simplify_isox() |>
 #' orbi_filter_isox(filenames = c("s3744"),
 #' compounds = "HSO4-",
 #' isotopocules = c("M0", "34S", "18O"),
@@ -156,105 +192,124 @@ orbi_simplify_isox <- function(dataset) {
 #'
 #' @return  Filtered tibble
 #' @export
-orbi_filter_isox <- function(dataset, filenames = FALSE, compounds = FALSE, isotopocules = FALSE, time_min = FALSE, time_max = FALSE) {
-
+orbi_filter_isox <-
+  function(dataset,
+           filenames = FALSE,
+           compounds = FALSE,
+           isotopocules = FALSE,
+           time_min = FALSE,
+           time_max = FALSE) {
 
   # safety checks
-  if (missing(dataset))
-    stop("no dataset supplied", call. = TRUE)
-  if (is.data.frame(dataset) == FALSE)
-    stop("dataset must be a data frame",  call. = TRUE)
-  if (ncol(dataset) < 8)
-    stop("dataset must have at least 8 columns: ", ncol(dataset), call. = TRUE)
-  if (nrow(dataset) < 1)
-    stop("dataset contains no rows: ", nrow(dataset), call. = TRUE)
+    if (missing(dataset))
+      stop("no dataset supplied", call. = TRUE)
 
+    if (is.data.frame(dataset) == FALSE)
+      stop("dataset must be a data frame",  call. = TRUE)
 
-  if (missing(filenames) && !isFALSE(filenames))
-    stop("input for filenames missing", call. = TRUE)
-  if (missing(compounds) && !isFALSE(compounds))
-    stop("input for compounds missing", call. = TRUE)
-  if (missing(isotopocules) && !isFALSE(isotopocules))
-    stop("input for isotopocules missing", call. = TRUE)
-  if (missing(time_min) && !isFALSE(time_min))
-    stop("input for time_min missing", call. = TRUE)
-  if (missing(time_max)  && !isFALSE(time_max))
-    stop("input for time_max missing", call. = TRUE)
+    if (ncol(dataset) < 8)
+      stop("dataset must have at least 8 columns: ", ncol(dataset), call. = TRUE)
 
+    if (nrow(dataset) < 1)
+      stop("dataset contains no rows", call. = TRUE)
 
-  if (!(is.vector(filenames) | isFALSE(filenames)))
-    stop("filenames needs to be a vector of names", call. = TRUE)
-  if (!(is.vector(isotopocules) | isFALSE(isotopocules)))
-    stop("isotopocules needs to be a vector of names", call. = TRUE)
-  if (!(is.vector(compounds) | isFALSE(compounds)))
-    stop("compounds needs to be a vector of names", call. = TRUE)
+    if (missing(filenames) && !isFALSE(filenames))
+      stop("input for filenames missing", call. = TRUE)
 
-  if (!(is.numeric(time_min) | isFALSE(time_min)))
-    stop("time_min needs to be a number", call. = TRUE)
-  if (!(is.numeric(time_max) | isFALSE(time_max)))
-    stop("time_max needs to be a number", call. = TRUE)
+    if (missing(compounds) && !isFALSE(compounds))
+      stop("input for compounds missing", call. = TRUE)
 
-  if (length(time_min) != 1)
-    stop("time_min needs to be a single number", call. = TRUE)
-  if (length(time_max) !=1)
-    stop("time_max needs to be a single number", call. = TRUE)
+    if (missing(isotopocules) && !isFALSE(isotopocules))
+      stop("input for isotopocules missing", call. = TRUE)
 
+    if (missing(time_min) && !isFALSE(time_min))
+      stop("input for time_min missing", call. = TRUE)
+
+    if (missing(time_max)  && !isFALSE(time_max))
+      stop("input for time_max missing", call. = TRUE)
+
+    if (!(is.vector(filenames) | isFALSE(filenames)))
+      stop("filenames needs to be a vector of names", call. = TRUE)
+
+    if (!(is.vector(isotopocules) | isFALSE(isotopocules)))
+      stop("isotopocules needs to be a vector of names", call. = TRUE)
+
+    if (!(is.vector(compounds) | isFALSE(compounds)))
+      stop("compounds needs to be a vector of names", call. = TRUE)
+
+    if (!(is.numeric(time_min) | isFALSE(time_min)))
+      stop("time_min needs to be a number", call. = TRUE)
+
+    if (!(is.numeric(time_max) | isFALSE(time_max)))
+      stop("time_max needs to be a number", call. = TRUE)
+
+    if (length(time_min) != 1)
+      stop("time_min needs to be a single number", call. = TRUE)
+
+    if (length(time_max) != 1)
+      stop("time_max needs to be a single number", call. = TRUE)
 
   # check that requires columns are present
-  req_cols <- c("filename", "compound", "scan.no", "time.min", "isotopocule", "ions.incremental", "tic", "it.ms")
+    req_cols <-
+      c(
+        "filename",
+        "compound",
+        "scan.no",
+        "time.min",
+        "isotopocule",
+        "ions.incremental",
+        "tic",
+        "it.ms"
+      )
 
-  missing_cols <- setdiff(req_cols, names(dataset))
+    missing_cols <- setdiff(req_cols, names(dataset))
 
-  if (length(missing_cols) > 0) {
-    paste0("missing required column(s): ", paste(missing_cols, collapse = ", ")) %>%
-      stop(call. = FALSE)
-  }
+    if (length(missing_cols) > 0) {
+      paste0("missing required column(s): ",
+             paste(missing_cols, collapse = ", ")) |>
+        stop(call. = FALSE)
+    }
 
-  # message
-  sprintf("orbi_filter_isox() is pre-filtering the data by filename (%s), compounds (%s), isotopocules (%s), minimum (%s) and maximum (%s) time in minutes...",
-          paste(filenames, collapse = ", "),
-          paste(compounds, collapse = ", "),
-          paste(isotopocules, collapse = ", "),
-          paste(time_min, collapse = ", "),
-          paste(time_max, collapse = ", ")) %>%
-    message()
+    # message
+    sprintf(
+      "orbi_filter_isox() is pre-filtering the data by filename (%s), compounds (%s), isotopocules (%s), minimum (%s) and maximum (%s) time in minutes...",
+      paste(filenames, collapse = ", "),
+      paste(compounds, collapse = ", "),
+      paste(isotopocules, collapse = ", "),
+      paste(time_min, collapse = ", "),
+      paste(time_max, collapse = ", ")
+    ) |>
+      message()
 
-  tryCatch(df.out <- dataset %>%
+    tryCatch({
+      df.out <- dataset
 
-             # file: filenames
-             {if (!isFALSE(filenames))
-                 dplyr::filter(., .data$filename %in% filenames)
-               else
-                 .
-             } %>%
-             # filter: compounds
-             {if (!isFALSE(compounds))
-                 dplyr::filter(., .data$compound %in% compounds)
-               else
-                 .
-             } %>%
-             # filter: isotopocules
-             {if (!isFALSE(isotopocules))
-                 dplyr::filter(., .data$isotopocule %in% isotopocules)
-               else
-                 .
-             } %>%
-             # filter: time_min
-             {if (!isFALSE(time_min))
-                 dplyr::filter(., .data$time.min >= time_min)
-               else
-                 .
-             } %>%
-             # filter: time_max
-             {if (!isFALSE(time_max))
-                 dplyr::filter(., .data$time.min <= time_max)
-               else
-                 .
-             },
-           warning = function(w) {
-             stop("something went wrong: ", w$message, call. = TRUE)
-           }
-  )
+        # file: filenames
+        if (!isFALSE(filenames))
+          df.out <- df.out |> dplyr::filter(.data$filename %in% filenames)
+
+        # filter: compounds
+        if (!isFALSE(compounds))
+          df.out <- df.out |> dplyr::filter(.data$compound %in% compounds)
+
+        # filter: isotopocules
+        if (!isFALSE(isotopocules))
+          df.out <- df.out |> dplyr::filter(.data$isotopocule %in% isotopocules)
+
+        # filter: time_min
+        if (!isFALSE(time_min))
+          df.out <- df.out |> dplyr::filter(.data$time.min >= time_min)
+
+        # filter: time_max
+        if (!isFALSE(time_max))
+          df.out <- df.out |> dplyr::filter(.data$time.min <= time_max)
+
+        df.out
+      },
+      warning = function(w) {
+        stop("something went wrong: ", w$message, call. = TRUE)
+      }
+    )
 
   return(df.out)
 }
