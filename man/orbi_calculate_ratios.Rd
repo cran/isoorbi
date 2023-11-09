@@ -2,13 +2,16 @@
 % Please edit documentation in R/ratio_functions.R
 \name{orbi_calculate_ratios}
 \alias{orbi_calculate_ratios}
-\title{Calculate isotopocule ratios (deprecated)}
+\title{Calculate direct isotopocule ratios}
 \usage{
-orbi_calculate_ratios(...)
+orbi_calculate_ratios(dataset)
 }
 \arguments{
-\item{...}{parameters passed on to new function orbi_calculate_ratio()}
+\item{dataset}{A data frame output after running \code{orbi_define_basepeak()}}
+}
+\value{
+Returns a mutated dataset with \code{ratio} column added.
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} This function was renamed to \code{\link[=orbi_calculate_ratio]{orbi_calculate_ratio()}} to better reflect what it does.
+This function calculates isotopocule/base peak ratios for all isotopocules. It does not summarize or average the ratios in any way. For a summarizing version of this function, see \code{orbi_summarize_results()}.
 }

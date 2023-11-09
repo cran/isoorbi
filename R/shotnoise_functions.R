@@ -1,0 +1,199 @@
+
+#' Analyze shot noise
+#'
+#' will calculate for all combinations of `filename`, `compound`, and `isotopocule` in the provided `dataset`
+#'
+#' @title Shot noise calculation
+#' @description This function computes the shot noise calculation.
+#' @param dataset a data frame output after running `orbi_define_basepeak()`
+#' @param include_flagged_data whether to include flagged data in the shot noise calculation (FALSE by default)
+#' @return The processed data frame with new columns: `n_effective_ions`, `ratio`, `ratio_rel_se.permil`, `shot_noise.permil`
+#' @export
+orbi_analyze_shot_noise <- function(dataset, include_flagged_data = FALSE){
+
+  # safety checks
+  stopifnot(
+    "need a `dataset` data frame" = !missing(dataset) && is.data.frame(dataset),
+    "`dataset` requires columns `filename`, `compound` and `isotopocule`" = all(c("filename", "compound", "isotopocule") %in% names(dataset)),
+    "`dataset` requires defined basepeak (column `basepeak_ions`), make sure to run `orbi_define_basepeak()` first" = "basepeak_ions" %in% names(dataset)
+  )
+
+  # filter flagged data
+  n_all <- nrow(dataset)
+  dataset_wo_flagged <- dataset |> filter_flagged_data()
+  n_after <- nrow(dataset_wo_flagged)
+  if (!include_flagged_data)
+    dataset <- dataset_wo_flagged
+  
+  # info message
+  start_time <-
+    sprintf(
+      "orbi_analyze_shot_noise() is analyzing the shot noise for %d peaks (%s %d flagged peaks)... ",
+      if(include_flagged_data) n_all else n_after, if(include_flagged_data) "including" else "excluded", n_all - n_after
+    ) |> message_start()
+
+  # calculation
+  dataset <-
+    try_catch_all(
+      dataset |>
+        # preserve original row order
+        dplyr::mutate(..idx = dplyr::row_number()) |>
+        # make sure order is compatible with cumsum based calculations
+        dplyr::arrange(.data$filename, .data$compound, .data$isotopocule, .data$scan.no) |>
+        dplyr::mutate(
+          # group by filename, compound, isotopocule.
+          .by = c("filename", "compound", "isotopocule"),
+          # cumulative ions
+          n_isotopocule_ions = cumsum(.data$ions.incremental),
+          n_basepeak_ions = cumsum(.data$basepeak_ions),
+          n_effective_ions = .data$n_basepeak_ions * .data$n_isotopocule_ions / (.data$n_basepeak_ions + .data$n_isotopocule_ions),
+          # relative standard error
+          n_measurements = 1:n(),
+          ratio_mean = cumsum(.data$ratio) / .data$n_measurements,
+          ratio_gmean = exp(cumsum(log(.data$ratio)) / .data$n_measurements),
+          #ratio_sd = sqrt( cumsum( (ratio - ratio_mean)^2 ) / (n_measurements - 1L) ),
+          # alternative std. dev. formula compatible with cumsum
+          # note that adjustment for sample sdev --> sqrt(n/(n-1)) partially cancels with 1/sqrt(n) for SD to SE
+          ratio_se = sqrt(cumsum(.data$ratio^2) / .data$n_measurements - .data$ratio_mean^2) * sqrt(1/(.data$n_measurements - 1L)),
+          # Q: do you really want to use gmean here but not in the std. dev calculation?
+          ratio_rel_se.permil = 1000 * .data$ratio_se / .data$ratio_gmean,
+          # shot noise - calc is same as 1000 * (1 / n_basepeak_ions + 1 / n_isotopocule_ions) ^ 0.5 but faster
+          shot_noise.permil = 1000 * .data$n_effective_ions ^ -0.5
+        ) |>
+        # restor original row order
+        dplyr::arrange(.data$..idx) |>
+        # remove columns not usually used downstream
+        select(-"..idx", -"n_basepeak_ions", -"n_isotopocule_ions", -"n_measurements", -"ratio_mean", -"ratio_gmean", -"ratio_se"),
+      "something went wrong analyzing shot noise",
+      newline = TRUE
+    )
+
+  # info
+  sprintf("calculations finished") |> message_finish(start_time = start_time)
+
+  # return
+  return(dataset)
+}
+
+#' plot shot noise
+#' @title Make a shot noise plot
+#' @description This function creates a shot noise plot using a `shotnoise` data frame created by the [orbi_analyze_shot_noise()] function.
+#' @param shotnoise a `shotnoise` data frame
+#' @param x x-axis for the shot noise plot, either "time.min" or "n_effective_ions"
+#' @param color which column to use for the color aesthetic (must be a factor)
+#' @param colors which colors to use, by default a color-blind friendly color palettes (RColorBrewer, dark2)
+#' @param permil_target highlight the target permil in the shotnoise plot
+#' @return a ggplot object
+#' @export
+orbi_plot_shot_noise <- function(
+    shotnoise,
+    x = c("time.min", "n_effective_ions"),
+    permil_target = NA_real_,
+    color = "ratio_label",
+    colors = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", "#A6761D", "#666666")) {
+
+  # safety checks
+  stopifnot(
+    "need a `shotnoise` data frame" = !missing(shotnoise) && is.data.frame(shotnoise),
+    "`shotnoise` requires columns `filename`, `compound`, `isotopocule` and `basepeak`" =
+      all(c("filename", "compound", "compound", "isotopocule", "basepeak") %in% names(shotnoise)),
+    "`shotnoise` requires columns `ratio_rel_se.permil` and `shot_noise.permil`, make sure to run `orbi_analyze_shot_noise()` first" =
+      all(c("ratio_rel_se.permil", "shot_noise.permil") %in% names(shotnoise))
+  )
+  x_column <- arg_match(x)
+
+  # data
+  plot_df <- shotnoise |>
+    filter(!is.na(.data$ratio_rel_se.permil)) |>
+    arrange(.data$isotopocule) |>
+    mutate(
+      ratio_label = sprintf("%s/%s", .data$isotopocule, .data$basepeak) |>
+        factor_in_order()
+    )
+
+  # color checks
+  stopifnot(
+    "`shotnoise` requires a factor column set for `color` aesthetic" = is_scalar_character(color) && color %in% names(plot_df) && is.factor(plot_df[[color]])
+  )
+  if (length(levels(plot_df[[color]])) > length(colors))
+    sprintf("not enough `colors` provided, %d needed for distinguishing %s", length(levels(plot_df[[color]])), color) |>
+    abort()
+
+  # closest analysis marker
+  find_closest_analysis <- function(target.permil) {
+    function(df) {
+      df |>
+        dplyr::group_by(.data$filename, .data$compound, .data$ratio_label) |>
+        dplyr::mutate(
+          target.permil = !!target.permil,
+          diff_target.permil = abs(.data$ratio_rel_se.permil - target.permil)
+        ) |>
+        dplyr::arrange(.data$diff_target.permil) |>
+        dplyr::slice_head(n = 1) |>
+        dplyr::ungroup()
+    }
+  }
+
+  # standard plot
+  plot <-
+    plot_df |>
+    ggplot2::ggplot() +
+    ggplot2::aes(y = .data$ratio_rel_se.permil, color = !!sym(color), shape = !!sym(color), group = paste(.data$filename, .data$compound, .data$isotopocule)) +
+    ggplot2::geom_line(
+      map = ggplot2::aes(y = .data$shot_noise.permil, linetype = !!sym(color))
+    ) +
+    ggplot2::geom_point(size = 3) +
+    ggplot2::scale_y_log10(breaks = 10^(-4:4), labels = function(x) paste(x, "\U2030")) +
+    ggplot2::annotation_logticks(sides = "lb") +
+    ggplot2::scale_color_manual(values = colors) +
+    ggplot2::scale_shape_manual(values = c(21:25, 15:18)) +
+    ggplot2::scale_linetype_manual(values = rep(1, 8)) +
+    orbi_default_theme() +
+    ggplot2::theme(
+      strip.background = ggplot2::element_blank(),
+      legend.position = "bottom",
+      legend.direction = "vertical",
+      legend.title.align = 0.5
+    ) +
+    ggplot2::labs(
+      y = "relative error",
+      color = "data", shape = "data",
+      linetype = "shot noise"
+    ) +
+    ggplot2::guides(
+      color = ggplot2::guide_legend(override.aes = list(linetype = 0)),
+      linetype = ggplot2::guide_legend(override.aes = list(color = colors[1:length(levels(plot_df[[color]]))]))
+    )
+
+  # wrap
+  plot <- plot |> dynamic_wrap()
+
+  # plots vs. time
+  if (x_column == "time.min") {
+    plot <- plot %+%
+      ggplot2::aes(x = .data$time.min) +
+      ggplot2::scale_x_log10(breaks = 10^(-2:2), labels = paste) +
+      ggplot2::labs(x = "analysis time [min]")
+  } else if (x_column == "n_effective_ions") {
+    plot <- plot %+%
+      ggplot2::aes(x = .data$n_effective_ions) +
+      ggplot2::scale_x_log10(breaks = 10^(2:12), labels = scales::label_log()) +
+      ggplot2::labs(x = "counts")
+  }
+
+  # permil target
+  if (!is.na(permil_target)) {
+    plot <- plot +
+      # closest analysis
+      ggplot2::geom_hline(yintercept = permil_target , linetype = 2) +
+      ggplot2::geom_vline(
+        data = find_closest_analysis(target.permil = permil_target),
+        # vs. time
+        map = ggplot2::aes(xintercept = .data$time.min, color = NULL),
+        linetype = 2
+      )
+  }
+
+  # return
+  return(plot)
+}

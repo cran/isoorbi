@@ -49,7 +49,7 @@ overflow: visible;
 </style>
 <style type="text/css" data-origin="pandoc">
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -340,37 +340,64 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># load isoorbi library</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(isoorbi)</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># load isoorbi library</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(isoorbi)</span></code></pre></div>
 <p>A basic data processing example</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Path to a test file included in the isoorbi pacakge</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>file_path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="at">package =</span> <span class="st">&quot;isoorbi&quot;</span>, <span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;testfile_flow.isox&quot;</span>)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Read .isox test data</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> file_path <span class="sc">|&gt;</span> <span class="fu">orbi_read_isox</span>() </span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Keep only most important columns; equivalent to simplify check box in IsoX</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>df.simple <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span> <span class="fu">orbi_simplify_isox</span>()</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Filter the data</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>df.filtered <span class="ot">&lt;-</span> df.simple <span class="sc">|&gt;</span> </span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">orbi_filter_isox</span>(</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">time_min =</span> <span class="dv">0</span>, </span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">time_max =</span> <span class="dv">1</span>, </span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">compounds =</span> <span class="st">&quot;HSO4-&quot;</span>,</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">isotopocules =</span> <span class="fu">c</span>(<span class="st">&quot;M0&quot;</span>, <span class="st">&quot;34S&quot;</span>, <span class="st">&quot;18O&quot;</span>)</span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean the data by removing noise and outliers</span></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>df.clean <span class="ot">&lt;-</span> df.filtered <span class="sc">|&gt;</span> </span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">orbi_filter_satellite_peaks</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">orbi_filter_weak_isotopocules</span>(<span class="at">min_percent =</span> <span class="dv">10</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">orbi_filter_scan_intensity</span>(<span class="at">outlier_percent =</span> <span class="dv">10</span>)</span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Define base peak and calculate the results table</span></span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>df.results <span class="ot">&lt;-</span> df.clean <span class="sc">|&gt;</span> </span>
-<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">orbi_define_basepeak</span>(<span class="at">basepeak_def =</span> <span class="st">&quot;M0&quot;</span>)<span class="sc">|&gt;</span> </span>
-<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">orbi_summarize_results</span>(<span class="at">ratio_method =</span> <span class="st">&quot;sum&quot;</span>)</span></code></pre></div>
+<div id="load" class="section level1">
+<h1>Load</h1>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># path to a test file included in the isoorbi package</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># this file contains data from multiple analyses for the same compound</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>file_path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="at">package =</span> <span class="st">&quot;isoorbi&quot;</span>, <span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;testfile_flow.isox&quot;</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># load data</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>df <span class="ot">&lt;-</span> </span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  file_path <span class="sc">|&gt;</span>  </span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="co"># reads .isox test data</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="fu">orbi_read_isox</span>() <span class="sc">|&gt;</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="co"># optionally: keeps only most important columns; equivalent to simplify check box in IsoX</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>  <span class="fu">orbi_simplify_isox</span>()</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co"># If you wish to read a whole folder of files, you can use the orbi_find_isox() function</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co"># df &lt;- &quot;path_to_your_folder&quot; |&gt; orbi_find_isox() |&gt; orbi_read_isox()</span></span></code></pre></div>
+</div>
+<div id="check" class="section level1">
+<h1>Check</h1>
+<p>Now that the data is loaded, check for satellite peaks, weak
+isotopocules and outliers.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># check for noise and outliers</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>df_flagged <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span> </span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="fu">orbi_flag_satellite_peaks</span>() <span class="sc">|&gt;</span> <span class="co"># removes minor signals that were reported by IsoX in the same tolerance window where the peak of interest is</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="fu">orbi_flag_weak_isotopocules</span>(<span class="at">min_percent =</span> <span class="dv">2</span>) <span class="sc">|&gt;</span> <span class="co"># removes signals of isotopocules that were not detected at least in min_percent scans</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="fu">orbi_flag_outliers</span>(<span class="at">agc_fold_cutoff =</span> <span class="dv">2</span>) <span class="co"># removes outlying scans that have more than 2 times or less than 1/2 times the average number of ions in the Orbitrap analyzer; another method: agc_window (see function documentation for more details)</span></span></code></pre></div>
+<p>The info messages from these functions suggest that no data was
+flagged.</p>
+</div>
+<div id="calculate" class="section level1">
+<h1>Calculate</h1>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># define base peak and calculate the results table</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>df_results <span class="ot">&lt;-</span> </span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  df_flagged <span class="sc">|&gt;</span> </span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="fu">orbi_define_basepeak</span>(<span class="at">basepeak_def =</span> <span class="st">&quot;M0&quot;</span>)<span class="sc">|&gt;</span> <span class="co"># sets one isotopocule in the dataset as the base peak (denominator) for ratio calculation</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="fu">orbi_summarize_results</span>(<span class="at">ratio_method =</span> <span class="st">&quot;sum&quot;</span>) <span class="co"># calculates ratios and generates a results table</span></span></code></pre></div>
+</div>
+<div id="visualize" class="section level1">
+<h1>Visualize</h1>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># use a ggplot to plot the data</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>df_results <span class="sc">|&gt;</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="fu">aes</span>(</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>    <span class="at">x =</span> <span class="fu">sprintf</span>(<span class="st">&quot;%s/%s&quot;</span>, isotopocule, basepeak),</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>    <span class="at">y =</span> ratio, <span class="at">ymin =</span> ratio <span class="sc">-</span> ratio_sem, <span class="at">ymax =</span> ratio <span class="sc">+</span> ratio_sem,</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>    <span class="at">color =</span> filename</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="fu">geom_pointrange</span>() <span class="sc">+</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>  <span class="fu">scale_color_brewer</span>(<span class="at">palette =</span> <span class="st">&quot;Set1&quot;</span>) <span class="sc">+</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  <span class="fu">orbi_default_theme</span>() <span class="sc">+</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">&quot;ratio&quot;</span>) <span class="sc">+</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>compound)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+</div>
 
 
 

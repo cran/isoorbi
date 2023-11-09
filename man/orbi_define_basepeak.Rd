@@ -2,20 +2,20 @@
 % Please edit documentation in R/utility_functions.R
 \name{orbi_define_basepeak}
 \alias{orbi_define_basepeak}
-\title{Define and assign the denominator for ratio calculation}
+\title{Define the denominator for ratio calculation}
 \usage{
 orbi_define_basepeak(dataset, basepeak_def)
 }
 \arguments{
-\item{dataset}{A tibble from a \code{IsoX} output. Needs to contain columns for \code{filename}, \code{compound}, \code{scan.no}, \code{isotopocule}, \code{ions.incremental}.}
+\item{dataset}{A tibble from a \code{IsoX} output. Needs to contain columns for \code{filename}, \code{compound}, \code{scan.no}, \code{isotopocule}, and \code{ions.incremental}.}
 
 \item{basepeak_def}{The isotopocule that gets defined as base peak, i.e. the denominator to calculate ratios}
 }
 \value{
-Input data frame without the rows of the basepeak isotopocule and instead two new columns called \code{basepeak} and \code{basepeak_ions} holding the basepeak information
+Input data frame without the rows of the basepeak isotopocule and instead three new columns called \code{basepeak}, \code{basepeak_ions}, and \code{ratio} holding the basepeak information and the isotope ratios vs. the base peak
 }
 \description{
-\code{orbi_define_basepeak()} sets one isotopocule in the data frame as the base peak (ratio denominator)
+\code{orbi_define_basepeak()} sets one isotopocule in the data frame as the base peak (ratio denominator) and calculates the instantaneous isotope ratios against it.
 }
 \examples{
 fpath <- system.file("extdata", "testfile_flow.isox", package = "isoorbi")

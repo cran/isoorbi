@@ -1,6 +1,36 @@
 
 context("blocks functions")
 
+test_that("test orbi_define_block_for_flow_injection()", {
+
+  # type checks
+  expect_error(orbi_define_block_for_flow_injection(), "`dataset` must be a data frame or tibble")
+  expect_error(orbi_define_block_for_flow_injection(42), "`dataset` must be a data frame or tibble")
+
+  df <- orbi_read_isox(system.file("extdata", "testfile_dual_inlet.isox", package = "isoorbi"))
+  df2 <- df |> mutate(dummy = 1) |> select(-scan.no)
+
+  expect_error(orbi_define_block_for_flow_injection(df2),
+               "`dataset` requires columns",
+               fixed = TRUE)
+
+  expect_error(orbi_define_block_for_flow_injection(df, start_time.min = "a"), "if set, `start_time.min` must be a single number")
+  expect_error(orbi_define_block_for_flow_injection(df, end_time.min = "a"), "if set, `end_time.min` must be a single number")
+  expect_error(orbi_define_block_for_flow_injection(df, start_scan.no = "a"), "if set, `start_scan.no` must be a single integer")
+  expect_error(orbi_define_block_for_flow_injection(df, end_scan.no = "a"), "if set, `end_scan.no` must be a single integer")
+
+  expect_error(orbi_define_block_for_flow_injection(df, start_time.min = 0, start_scan.no = 5), "block definition requires either `start_time.min` and `end_time.min` or `start_scan.no` and `end_scan.no`")
+  expect_error(orbi_define_block_for_flow_injection(df, start_time.min = 0, start_scan.no = 5, end_time.min = 2, end_scan.no = 10), "block definition can either be by time or by scan but not both")
+
+  # results checks
+  test_data <- tibble(
+    filename = rep(c("test1", "test2"), c(6, 4)),
+    scan.no = 1:10, time.min = scan.no/10
+  )
+  expect_message(orbi_define_block_for_flow_injection(test_data, start_time.min = 0.1, end_time.min = 0.9), "column `filename` was turned into a factor.*")
+
+})
+
 test_that("test internal find_intervals()", {
 
   # type checks
@@ -224,6 +254,10 @@ test_that("test orbi_adjust_block()", {
   expect_equal(result3$data_group, rep(c(1, 3), c(5, 1)))
   expect_equal(result3$data_type, test_data$data_type)
   expect_equal(result3$segment, rep(c(NA_integer_, 1L), c(5, 1)))
+
+  expect_message(result4 <- orbi_adjust_block(test_data, 1, "test1", shift_end_scan.no = 1), "moving block 1 end from scan 3.*to 4")
+
+  expect_message(result5 <- orbi_adjust_block(test_data, 1, "test1", shift_end_time.min = 1), "moving block 2 start to the new end of block 1")
 })
 
 test_that("test orbi_segment_block()", {
@@ -249,14 +283,14 @@ test_that("test orbi_segment_block()", {
 
   # results check
   test_data <- tibble(
-    filename = rep(c("test1", "test2"), c(6, 4)),
+    filename = rep(c("test1", "test2"), c(6, 4)) |> forcats::as_factor(),
     scan.no = 1:10, time.min = scan.no^2/10,
     block = rep(c(1L, 2L, 1L), c(4, 2, 4)),
     sample_name = c("test"),
     data_type = rep(c("unused", "data"), c(2, 8))
   )
 
-  expect_message(res1 <- test_data |> orbi_segment_blocks(into_segments = 2), "segmented 3 data blocks.*2 segments")
+  expect_message(res1 <- test_data |> orbi_segment_blocks(into_segments = 2), "segmenting 3 data blocks")
   expect_equal(
     res1,
     test_data |> dplyr::mutate(
@@ -265,7 +299,7 @@ test_that("test orbi_segment_block()", {
     ) |> dplyr::relocate(data_group, .before = "block")
   )
 
-  expect_message(res2 <- test_data |> orbi_segment_blocks(by_scans = 2), "segmented 3 data blocks.*2 scans")
+  expect_message(res2 <- test_data |> orbi_segment_blocks(by_scans = 2), "2 scans")
   expect_equal(
     res2,
     test_data |> dplyr::mutate(
@@ -274,7 +308,7 @@ test_that("test orbi_segment_block()", {
     ) |> dplyr::relocate(data_group, .before = "block")
   )
 
-  expect_message(res3 <- test_data |> orbi_segment_blocks(by_time_interval = 1.0), "segmented 3 data blocks.*2.3 segments")
+  expect_message(res3 <- test_data |> orbi_segment_blocks(by_time_interval = 1.0), "2.3 segments")
   expect_equal(
     res3,
     test_data |> dplyr::mutate(
@@ -283,7 +317,56 @@ test_that("test orbi_segment_block()", {
     ) |> dplyr::relocate(data_group, .before = "block")
   )
 
+})
 
+test_that("test orbi_get_blocks_info()", {
+
+  # type checks
+  expect_error(orbi_get_blocks_info(), "`dataset` must be a data frame or tibble")
+  expect_error(orbi_get_blocks_info(42), "`dataset` must be a data frame or tibble")
+
+  df <- orbi_read_isox(system.file("extdata", "testfile_dual_inlet.isox", package = "isoorbi"))
+  df2 <- df |> mutate(dummy = 1) |> select(-scan.no)
+
+  expect_error(orbi_get_blocks_info(df2),
+               "`dataset` requires columns",
+               fixed = TRUE)
+  expect_warning(orbi_get_blocks_info(df), "`dataset` does not seem to have any block definitions yet (`block` column missing)",
+                 fixed = TRUE)
+
+})
+
+test_that("test orbi_add_blocks_to_plot()", {
+
+  # type checks
+  expect_error(orbi_add_blocks_to_plot(), "`plot` has to be a ggplot", fixed = TRUE)
+  expect_error(orbi_add_blocks_to_plot(42), "`plot` has to be a ggplot", fixed = TRUE)
+  
+  df <- orbi_read_isox(system.file("extdata", "testfile_dual_inlet.isox", package = "isoorbi")) |>
+    orbi_simplify_isox() |> orbi_define_blocks_for_dual_inlet(ref_block_time.min = 0.5, change_over_time.min = 0.1)
+  
+  library(ggplot2)
+  
+  fig <- orbi_plot_raw_data(df, y = "ratio")
+  
+  suppressMessages(expect_type(orbi_add_blocks_to_plot(fig), "list"))
+
+})
+
+test_that("test find_scan_from_time()", {
+
+  # type checks
+  expect_error(find_scan_from_time(), "argument \"scans\" is missing, with no default")
+  expect_error(find_scan_from_time(scans = "c"), "no applicable method for 'filter' applied to an object of class \"character\"")
+  expect_error(find_scan_from_time(scans = TRUE), "no applicable method for 'filter' applied to an object of class \"logical\"")
+
+})
+
+test_that("test get_scan_row()", {
+
+  # type checks
+  expect_error(get_scan_row(), "argument \"scan\" is missing, with no default")
+  expect_error(get_scan_row(scans = 42), "argument \"scan\" is missing, with no default")
 
 })
 
