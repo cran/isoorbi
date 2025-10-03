@@ -1,5 +1,5 @@
 library(testthat)
-library(dplyr)
+library(dplyr, warn.conflicts = FALSE)
 
-# run the test
+# run the tests
 test_check("isoorbi")

@@ -1,7 +1,69 @@
+# isoorbi 1.5.2
+
+This is a minor update to decrease package size for CRAN. 
+
+## Enhancements
+
+ * added `orbi_get_example_files()` that can download additional example files to provide easier access to test files for users
+
+# isoorbi 1.5.1
+
+This is a minor update to enhance usability.
+
+## Enhancements
+
+* show panel lables in spectral plots, i.e. M+1, M+2, etc. (#93)
+* align x-axes in spectral plots (#98)
+* introduce default_tolerance and default_charge parameters for `orbi_identify_isotopocules` (#95)
+* automatically calculate ions during `orbi_identify_isotopocules`
+* provide a stastic of ion counts identified when running `orbi_identify_isotopocules` (#94)
+* provide more informative error when `orbi_read_raw` fails because the raw file is still being acquired
+* provide `orbi_get_example_files` function as a one-point stop to get both system package test files as well as downloadable test files
+* `orbi_find_raw` now finds both .raw and .RAW extensions (i.e. no longer case-sensitive)
+
+# isoorbi 1.5.0
+
+## Breaking changes
+
+There are no breaking changes in this release (all changes and new features are backwards compatible).
+
+## New features
+
+* implemented an optimized and expanded raw file reader (isoraw) that is packaged  with isoorbi and is used in `orbi_read_raw()`
+* implemented versatile isotopocule mapping via `orbi_identifiy_isotopocule()` from csv, tsv, and excel inputs
+* implemented `orbi_calculate_ions()` to calculate ions from peak intensities and noise with flexible `CN` and `RN` parameters
+* implemented `orbi_plot_spectra()` to plot 
+
+## Enhancements
+
+* upgraded all data processing and plotting functions to be compatible with both isox and raw file datasets
+* improved default print outputs for S3 classes used in the package
+* improved package structure documentation
+* expanded `orbi_flag_outliers()` functionality (contributed by Florian Rubach)
+
+## Bug fixes
+
+* fixed incompatibility with ggplot2 version 4.0.0 (#69)
+
+# isoorbi 1.4.0
+
+## Breaking changes
+
+There are no breaking changes in this release (all changes and new features are backwards compatible).
+
+## New features
+
+* implemented direct reading and caching of orbitrap IRMS raw files (`orbi_read_read()`) via the rawrr package
+* use CLI for clearer and more informative info messages for all functions
+
+## Enhancements
+
+* renamed package "settings" to package "options" to be consistent with the naming conventions in base R (`orbi_options()` replaces `orbi_set_settings()` and `orbi_get_options()` / `orbi_get_option()` replaces `orbi_get_settings()`)
+* improved functionality for options loading and defaults
+
 # isoorbi 1.3.1
 
 This is a patch containing compatibility updates.
-
 
 # isoorbi 1.3.0
 

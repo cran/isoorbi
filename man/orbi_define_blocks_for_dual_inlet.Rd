@@ -10,12 +10,12 @@ orbi_define_blocks_for_dual_inlet(
   change_over_time.min,
   sample_block_time.min = ref_block_time.min,
   startup_time.min = 0,
-  ref_block_name = setting("di_ref_name"),
-  sample_block_name = setting("di_sample_name")
+  ref_block_name = orbi_get_option("di_ref_name"),
+  sample_block_name = orbi_get_option("di_sample_name")
 )
 }
 \arguments{
-\item{dataset}{A data frame or tibble produced from IsoX data by \code{\link[=orbi_simplify_isox]{orbi_simplify_isox()}}}
+\item{dataset}{An aggregated dataset or a data frame of peaks (i.e. works directly after \code{\link[=orbi_identify_isotopocules]{orbi_identify_isotopocules()}} as well as with a tibble from \link[=orbi_get_data]{orbi_get_data(peaks = everything())} or when reading from an IsoX file)}
 
 \item{ref_block_time.min}{time where the signal is stable when reference is analyzed}
 
@@ -36,7 +36,7 @@ A data frame (tibble) with block annotations in the form of the additional colum
 \item \code{block} is an integer counting the data blocks in each file (0 is the startup block)
 \item \code{sample_name} is the name of the material being measured as defined by the \code{ref_block_name} and \code{sample_block_name} parameters
 \item \code{segment} is an integer defines segments within individual blocks - this will be \code{NA} until the optional \code{\link[=orbi_segment_blocks]{orbi_segment_blocks()}} is called
-\item \code{data_type} is a text value describing the type of data in each \code{data_group} - for a list of the main categories, call \code{orbi_get_settings("data_type")}
+\item \code{data_type} is a text value describing the type of data in each \code{data_group} - for a list of the main categories, call \code{orbi_get_options("data_type")}
 }
 }
 \description{

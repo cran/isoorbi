@@ -1,6 +1,6 @@
 ## ----include=FALSE------------------------------------------------------------
 # default chunk options
-knitr::opts_chunk$set(collapse = TRUE, message = FALSE, comment = "#>")
+knitr::opts_chunk$set(collapse = FALSE, message = TRUE, comment = "")
 
 ## -----------------------------------------------------------------------------
 # load libraries
